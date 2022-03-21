@@ -11,7 +11,7 @@ struct Config {
 
   std::vector<boost::filesystem::path> binary_path;
   boost::filesystem::path xclbin_path;
-  unsigned int timeout;
+  uint64_t timeout;
 
   std::shared_ptr<Logger> logger;
   Config() { logger = std::make_shared<ConsoleLogger>(); }

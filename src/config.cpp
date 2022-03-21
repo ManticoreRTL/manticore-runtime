@@ -19,8 +19,8 @@ bool Config::parse(int argc, char *argv[]) {
       value<boost::filesystem::path>()->value_name("PATH")->required(),
       "Path to the XCLBIN");
   opt_desc.add_options()(
-      "timeout", value<unsigned int>()->value_name("N")->default_value(1000),
-      "Time out after N cycles, defaults to 1000");
+      "timeout", value<uint64_t>()->value_name("N")->default_value(0),
+      "Time out after N cycles, defaults to 0 (i.e., does not time out)");
 
   variables_map vm;
   try {
@@ -44,7 +44,7 @@ bool Config::parse(int argc, char *argv[]) {
 
   binary_path = vm["input"].as<std::vector<boost::filesystem::path>>();
   xclbin_path = vm["xclbin"].as<boost::filesystem::path>();
-  timeout = vm["timeout"].as<unsigned int>();
+  timeout = vm["timeout"].as<uint64_t>();
   return true;
 }
 } // namespace manticore

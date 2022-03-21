@@ -78,20 +78,26 @@ void ManticoreManager::run(const boost::filesystem::path &path) {
   }
 
   timedAction("Starting kernel", [&]() -> void {
-    m_kernel.write_register(0x30, 0); // global memory inst base
-    m_kernel.write_register(0x34, 0); // global memory inst base
-    m_kernel.write_register(0x60 + 0, m_buffer.address());
-    m_kernel.write_register(0x60 + 4, m_buffer.address() >> 32L);
-    m_kernel.write_register(0x00, 0x01);
+    write<GMEM_BASE>(0);
+    write<PTR0>(m_buffer.address());
+    uint64_t timeout = m_cfg->timeout;
+    if (timeout > 0) {
+      uint64_t sched_conf = (1UL << 56UL) | timeout;
+      write<SCHED_CONFIG>(sched_conf);
+    } else {
+      write<SCHED_CONFIG>(0);
+    }
+    write<CTRL>(1);
     bool idle = false;
     do {
       std::this_thread::sleep_for(std::chrono::milliseconds(100));
       auto state = m_kernel.read_register(0x00);
       idle = ((state >> 2) & 0x01) == 1;
     } while (!idle);
-    m_cfg->logger->info("Boot: %d", m_kernel.read_register(0x7c));
-    m_cfg->logger->info("vcycles: %d", m_kernel.read_register(0x84));
-    m_cfg->logger->info("exception_id: %d", m_kernel.read_register(0x74));
+    m_cfg->logger->info("Boot: %d", read<BOOTLOADER_CYCLES>());
+    m_cfg->logger->info("cycles: %d", read<EXEC_CYCLES>());
+    m_cfg->logger->info("vcycles: %d", read<VCYCLES>());
+    m_cfg->logger->info("exception_id: %d", read<EXCEPTION_ID>());
   });
 }
 
