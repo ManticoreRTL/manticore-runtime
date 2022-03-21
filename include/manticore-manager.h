@@ -40,7 +40,7 @@ private:
     uint64_t lo = m_kernel.read_register(R::base);
     if (R::width == 64) {
       uint64_t hi = m_kernel.read_register(R::base + 0x4);
-      return lo | (hi << 32);
+      return lo | (hi << 32UL);
     } else {
       return lo;
     }
