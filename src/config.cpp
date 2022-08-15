@@ -22,6 +22,10 @@ bool Config::parse(int argc, char *argv[]) {
       "timeout", value<uint64_t>()->value_name("N")->default_value(0),
       "Time out after N cycles, defaults to 0 (i.e., does not time out)");
 
+  opt_desc.add_options()(
+    "stop-on-entry", bool_switch(), "stop on entry for waveform debugging"
+  );
+
   variables_map vm;
   try {
     store(parse_command_line(argc, argv, opt_desc), vm);
@@ -35,6 +39,7 @@ bool Config::parse(int argc, char *argv[]) {
     return false;
   }
 
+
   try {
     notify(vm);
   } catch (error &e) {
@@ -44,6 +49,7 @@ bool Config::parse(int argc, char *argv[]) {
 
   binary_path = vm["input"].as<std::vector<boost::filesystem::path>>();
   xclbin_path = vm["xclbin"].as<boost::filesystem::path>();
+  stop_on_entry = vm["stop-on-entry"].as<bool>();
   timeout = vm["timeout"].as<uint64_t>();
   return true;
 }

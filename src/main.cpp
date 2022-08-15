@@ -20,6 +20,11 @@ int main(int argc, char *argv[]) {
   manticore::ManticoreManager dev(cfg);
 
   dev.powerOn();
+  if (cfg->stop_on_entry) {
+    cfg->logger->info("Press a key to continue!");
+    std::cin.get();
+  }
+
   dev.runAll();
 
 }

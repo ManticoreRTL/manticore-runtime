@@ -12,6 +12,30 @@
 
 namespace manticore {
 
+
+struct Commands final {
+
+
+  static uint64_t START(uint64_t timeout = 0) {
+    if (timeout > 0) {
+      return timeout | (1L << 63L);
+    } else {
+      return 0;
+    }
+  }
+  static uint64_t RESUME(uint64_t timeout = 0) {
+    if (timeout > 0) {
+      return ((1L << 56L) | timeout | (1L << 63L));
+    } else {
+      return 1L << 56L;
+    }
+  }
+
+  static uint64_t CACHE_FLUSH() {
+    return (2L << 56L);
+  }
+};
+
 class ManticoreManager {
 
 public:

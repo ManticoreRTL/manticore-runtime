@@ -81,12 +81,7 @@ void ManticoreManager::run(const boost::filesystem::path &path) {
     write<GMEM_BASE>(0);
     write<PTR0>(m_buffer.address());
     uint64_t timeout = m_cfg->timeout;
-    if (timeout > 0) {
-      uint64_t sched_conf = (1UL << 56UL) | timeout;
-      write<SCHED_CONFIG>(sched_conf);
-    } else {
-      write<SCHED_CONFIG>(0);
-    }
+    write<SCHED_CONFIG>(Commands::START(m_cfg->timeout));
     write<CTRL>(1);
     bool idle = false;
     do {
