@@ -21,28 +21,41 @@ set(INCLUDE_DIRS
     ${CMAKE_CURRENT_SOURCE_DIR}/include
     ${XRT_INCLUDE_DIR} ## XRT
     ${TFM_INCLUDE_DIR} ## Tiny Format
+    ${INFINT_INCLUDE_DIR} ## InfInt for large integers
+    ${JSON_INCLUDE_DIR} ## for json
 )
 
 # Source files
 set(CPP_SOURCES
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/main.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/logger.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/config.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/manticore-manager.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/string-format.cpp
 )
 
 # Linkable libraries
 
 set(EXT_LIBS
-
     ${XRT_LIBRARIES}
     ${Boost_LIBRARIES}
 )
 
-add_executable(manticore ${CPP_SOURCES})
+add_library(mantilib STATIC ${CPP_SOURCES})
+target_include_directories(mantilib PUBLIC ${INCLUDE_DIRS})
+target_link_libraries(mantilib PUBLIC ${EXT_LIBS})
+target_compile_features(mantilib PUBLIC cxx_std_14)
+
+
+add_executable(manticore ${CMAKE_CURRENT_SOURCE_DIR}/src/main.cpp)
 target_include_directories(manticore PUBLIC ${INCLUDE_DIRS})
 # target_link_directories(manticore PUBLIC ${XRT_LIB_DIR})
-target_link_libraries(manticore PUBLIC ${XRT_LIBRARIES} ${Boost_LIBRARIES})
-target_compile_features(manticore PRIVATE cxx_std_14)
+target_link_libraries(manticore PUBLIC mantilib)
+target_compile_features(manticore PUBLIC cxx_std_14)
 
+
+
+# Tests
+enable_testing()
+
+add_subdirectory(test)
 

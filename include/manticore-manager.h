@@ -12,9 +12,7 @@
 
 namespace manticore {
 
-
 struct Commands final {
-
 
   static uint64_t START(uint64_t timeout = 0) {
     if (timeout > 0) {
@@ -31,9 +29,7 @@ struct Commands final {
     }
   }
 
-  static uint64_t CACHE_FLUSH() {
-    return (2L << 56L);
-  }
+  static uint64_t CACHE_FLUSH() { return (2L << 56L); }
 };
 
 class ManticoreManager {
@@ -51,7 +47,7 @@ private:
 #define MREG(N, B, W)                                                          \
   struct N {                                                                   \
     static constexpr int base = B;                                             \
-    static constexpr int width = 64;                                           \
+    static constexpr int width = W;                                            \
   };
 
   template <typename R> void write(uint64_t v) {
@@ -69,37 +65,7 @@ private:
       return lo;
     }
   }
-  MREG(CTRL, 0x00, 32);
-  MREG(SCHED_CONFIG, 0x10, 64);
-  MREG(VCD_LOG_BASE, 0x1c, 64);
-  MREG(VCD_SYM_BASE, 0x28, 64);
-  MREG(GMEM_BASE, 0x34, 64);
-  MREG(PTR3, 0x40, 64);
-  MREG(PTR2, 0x4C, 64);
-  MREG(PTR1, 0x58, 64);
-  MREG(PTR0, 0x64, 64);
-  MREG(EXEC_CYCLES, 0x70, 64);
-  MREG(EXCEPTION_ID, 0x7c, 32);
-  MREG(BOOTLOADER_CYCLES, 0x84, 32);
-  MREG(VCYCLES, 0x8c, 64);
 
-  /**
-   * @brief
-   *
-   *  0x10 -> schedule_config (64)
-   *  0x1c -> value_change_log_base (64)
-   *  0x28 -> value_change_symbol_table_base (64)
-   *  0x34 -> global_memory_instruction_base (64)
-   *  0x40 -> pointer_3 (64)
-   *  0x4c -> pointer_2 (64)
-   *  0x58 -> pointer_1 (64)
-   *  0x64 -> pointer_0 (64)
-   *  0x70 -> execution_cycles (64)
-   *  0x7c -> exception_id (32)
-   *  0x84 -> bootloader_cycles (32)
-   *  0x8c -> virtual_cycles (64)
-   *  Writeable address range 16 -> 104 (total 23)
-   */
   template <class Action>
   inline float timedAction(const std::string &desc, Action action) {
     m_cfg->logger->info("==> %s", desc);

@@ -1,56 +1,107 @@
 #include "config.h"
 #include <boost/program_options.hpp>
+#include <json.hpp>
+
 namespace manticore {
 
-bool Config::parse(int argc, char *argv[]) {
-  using namespace boost::program_options;
-  options_description opt_desc("Manticore runtime");
+std::shared_ptr<Config> Config::load(uint64_t timeout,
+                                     const boost::filesystem::path &xclbin_path,
+                                     const boost::filesystem::path &json_path) {
+  using json = nlohmann::json;
+  auto fp = std::ifstream(json_path.string(), std::ios::in);
+  auto data = json::parse(fp);
 
-  Config cfg;
+  auto config = std::make_shared<manticore::Config>();
+  config->xclbin_path = xclbin_path;
+  // config->logger->info("Reading json file");
+  config->dimx = data["grid"]["dimx"];
+  config->dimy = data["grid"]["dimy"];
+  config->program_path = data["program"].get<boost::filesystem::path>();
+  for (const auto &init : data["initializers"]) {
+    config->init_path.push_back(init.get<boost::filesystem::path>());
+  }
+  for (const auto &excpt : data["exceptions"]) {
 
-  opt_desc.add_options()("help,h", "show the help message and exit");
-  opt_desc.add_options()("input,i",
-                         value<std::vector<boost::filesystem::path>>()
-                             ->value_name("PATH1[ PATH2[...]]")
-                             ->required()->multitoken(),
-                         "Paths of programs to execute in order");
-  opt_desc.add_options()(
-      "xclbin,x",
-      value<boost::filesystem::path>()->value_name("PATH")->required(),
-      "Path to the XCLBIN");
-  opt_desc.add_options()(
-      "timeout", value<uint64_t>()->value_name("N")->default_value(0),
-      "Time out after N cycles, defaults to 0 (i.e., does not time out)");
+    const std::string type = excpt["type"];
+    if (type == "FINISH") {
+      config->exceptions.emplace_back(std::make_shared<FinishException>(
+          excpt["id"].get<uint32_t>(), excpt["info"].get<std::string>()));
+    } else if (type == "STOP") {
+      config->exceptions.emplace_back(std::make_shared<StopException>(
+          excpt["id"].get<uint32_t>(), excpt["info"].get<std::string>()));
+    } else if (type == "ASSERT") {
+      config->exceptions.emplace_back(std::make_shared<AssertException>(
+          excpt["id"].get<uint32_t>(), excpt["info"].get<std::string>()));
+    } else if (type == "FLUSH") {
 
-  opt_desc.add_options()(
-    "stop-on-entry", bool_switch(), "stop on entry for waveform debugging"
-  );
+      std::vector<std::shared_ptr<util::Fmt>> fmt;
+      std::vector<std::vector<uint32_t>> offsets;
+      auto parseOffsets = [](const json &rec) -> std::vector<uint32_t> {
+        std::vector<uint32_t> pointers;
+        for (auto &v : rec["offsets"]) {
+          pointers.push_back(v.get<uint32_t>());
+        }
+        return pointers;
+      };
+      for (const auto &rec : excpt["fmt"]) {
+        const auto fmt_type = rec["type"].get<std::string>();
+        if (fmt_type == "string") {
+          fmt.emplace_back(std::make_shared<util::FmtStringLit>(
+              rec["value"].get<std::string>()));
+          offsets.push_back(std::vector<uint32_t>());
+        } else if (fmt_type == "hex") {
+          fmt.emplace_back(
+              std::make_shared<util::FmtHexLit>(rec["bitwidth"].get<int>()));
+          offsets.push_back(parseOffsets(rec));
+        } else if (fmt_type == "dec") {
+          fmt.emplace_back(std::make_shared<util::FmtDecLit>(
+              rec["bitwidth"].get<int>(), rec["digits"].get<int>()));
+          offsets.push_back(parseOffsets(rec));
+        } else if (fmt_type == "bin") {
+          fmt.emplace_back(
+              std::make_shared<util::FmtBinLit>(rec["bitwidth"].get<int>()));
+          offsets.push_back(parseOffsets(rec));
+        } else {
+          throw std::runtime_error(
+              tfm::format("invalid fmt type %s", fmt_type));
+        }
+      }
 
-  variables_map vm;
-  try {
-    store(parse_command_line(argc, argv, opt_desc), vm);
-  } catch (error &e) {
-    logger->error("Failed parsing arguments: %s", e.what());
-    return false;
+      config->exceptions.emplace_back(std::make_shared<FlushException>(
+          excpt["id"], excpt["info"], fmt, offsets));
+    }
   }
 
-  if (vm.count("help")) {
-    logger->info("%s", opt_desc);
-    return false;
+  return config;
+}
+
+std::string FlushException::consume(
+    const std::vector<std::vector<uint16_t>> &values) const {
+
+  // auto fmt_ix = 0;
+  assert(values.size() == m_fmt.size());
+  for (auto fmt_ix = 0; fmt_ix < values.size(); fmt_ix++) {
+    switch (m_fmt[fmt_ix]->type()) {
+    case util::Fmt::Type::E_STRING:
+      assert(values[fmt_ix].size() == 0);
+      break;
+      // do nothing
+    case util::Fmt::Type::E_BIN:
+    case util::Fmt::Type::E_DEC:
+    case util::Fmt::Type::E_HEX:
+      std::dynamic_pointer_cast<util::FmtNumericLit>(m_fmt[fmt_ix])
+          ->consume(values[fmt_ix]);
+      break;
+    default:
+      throw std::runtime_error("Invalid format type!");
+      break;
+    }
   }
+  auto builder = std::stringstream("");
 
-
-  try {
-    notify(vm);
-  } catch (error &e) {
-    logger->error("Error parsing arguments: %s", e.what());
-    return false;
+  for (const auto &fmt : m_fmt) {
+    builder << fmt->toString();
   }
-
-  binary_path = vm["input"].as<std::vector<boost::filesystem::path>>();
-  xclbin_path = vm["xclbin"].as<boost::filesystem::path>();
-  stop_on_entry = vm["stop-on-entry"].as<bool>();
-  timeout = vm["timeout"].as<uint64_t>();
-  return true;
+  return builder.str();
 }
 } // namespace manticore

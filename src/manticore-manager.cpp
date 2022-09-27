@@ -1,5 +1,5 @@
 #include "manticore-manager.h"
-
+#include "manticore-registers.h"
 namespace manticore {
 
 void ManticoreManager::powerOn() {
@@ -78,26 +78,26 @@ void ManticoreManager::run(const boost::filesystem::path &path) {
   }
 
   timedAction("Starting kernel", [&]() -> void {
-    write<GMEM_BASE>(0);
-    write<PTR0>(m_buffer.address());
+    write<registers::Control>(0);
+    write<registers::DramBank0Base>(m_buffer.address());
     uint64_t timeout = m_cfg->timeout;
-    write<SCHED_CONFIG>(Commands::START(m_cfg->timeout));
-    write<CTRL>(1);
+    write<registers::ScheduleConfig>(Commands::START(m_cfg->timeout));
+    write<registers::Control>(1);
     bool idle = false;
     do {
       std::this_thread::sleep_for(std::chrono::milliseconds(100));
       auto state = m_kernel.read_register(0x00);
       idle = ((state >> 2) & 0x01) == 1;
     } while (!idle);
-    m_cfg->logger->info("Boot: %d", read<BOOTLOADER_CYCLES>());
-    m_cfg->logger->info("cycles: %d", read<EXEC_CYCLES>());
-    m_cfg->logger->info("vcycles: %d", read<VCYCLES>());
-    m_cfg->logger->info("exception_id: %d", read<EXCEPTION_ID>());
+    m_cfg->logger->info("Boot: %d", read<registers::BootloaderCycleCount>());
+    m_cfg->logger->info("cycles: %d", read<registers::CycleCount>());
+    m_cfg->logger->info("vcycles: %d", read<registers::VirtualCycleCount>());
+    m_cfg->logger->info("exception_id: %d", read<registers::ExceptionId>());
   });
 }
 
 void ManticoreManager::runAll() {
-  for (const auto &bin_path : m_cfg->binary_path) {
+  for (const auto &bin_path : m_cfg->init_path) {
     m_cfg->logger->info("Starting %s", bin_path.string());
     run(bin_path);
   }

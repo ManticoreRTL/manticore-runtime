@@ -57,5 +57,7 @@ protected:
   virtual void do_info(const std::string &msg) const override final;
   void do_msg(const std::string &msg) const;
 };
+
+
 } // namespace manticore
 #endif
