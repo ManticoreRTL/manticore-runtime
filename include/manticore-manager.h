@@ -10,26 +10,30 @@
 #include <xrt/xrt_kernel.h>
 #include <xrt/xrt_uuid.h>
 
+
 namespace manticore {
 
-struct Commands final {
+struct Command final {
 
-  static uint64_t START(uint64_t timeout = 0) {
+  const uint64_t value;
+  explicit Command(uint64_t value) : value(value) {}
+
+  static Command start(uint64_t timeout = 0) {
     if (timeout > 0) {
-      return timeout | (1L << 63L);
+      return Command(timeout | (1L << 63L));
     } else {
-      return 0;
+      return Command(0);
     }
   }
-  static uint64_t RESUME(uint64_t timeout = 0) {
+  static Command resume(uint64_t timeout = 0) {
     if (timeout > 0) {
-      return ((1L << 56L) | timeout | (1L << 63L));
+      return Command((1L << 56L) | timeout | (1L << 63L));
     } else {
-      return 1L << 56L;
+      return Command(1L << 56L);
     }
   }
 
-  static uint64_t CACHE_FLUSH() { return (2L << 56L); }
+  static Command flushCache() { return Command(2L << 56L); }
 };
 
 class ManticoreManager {
@@ -39,16 +43,25 @@ public:
       : m_cfg(cfg), m_run_index(0) {}
 
   void powerOn();
-
-  void run(const boost::filesystem::path &path);
-  void runAll();
+  void initialize();
+  void execute();
 
 private:
-#define MREG(N, B, W)                                                          \
-  struct N {                                                                   \
-    static constexpr int base = B;                                             \
-    static constexpr int width = W;                                            \
+  struct ProgramBinary {
+    // using Byte = unsigned char;
+    const boost::filesystem::path path;
+    std::vector<char> content;
+    uint64_t base = -1;   // in the global memory (in shorts)
+    uint64_t length = -1; // in the global memory (in shorts), i.e., length =
+                          // content.size() * 2;
+    bool loaded = false;
+    ProgramBinary(const boost::filesystem::path &p) : path(p) {}
+    void load();
   };
+  void initializeMemory();
+  uint32_t runProgram(const ProgramBinary &prog, const Command cmd);
+
+  void handleFlush(const std::shared_ptr<FlushException>& exception);
 
   template <typename R> void write(uint64_t v) {
     m_kernel.write_register(R::base, v);
@@ -68,24 +81,29 @@ private:
 
   template <class Action>
   inline float timedAction(const std::string &desc, Action action) {
-    m_cfg->logger->info("==> %s", desc);
+    m_cfg->logger->info("> %s", desc);
     auto start_time = std::chrono::high_resolution_clock::now();
     action();
     auto end_time = std::chrono::high_resolution_clock::now();
     auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(
         end_time - start_time);
     float in_ms = static_cast<float>(elapsed.count()) / 1000.;
-    m_cfg->logger->info("==| took %.3f ms", in_ms);
+    m_cfg->logger->info("> took %.3f ms", in_ms);
+
     return in_ms;
   }
 
   xrt::bo m_buffer;
+  char* m_host_buffer;
   xrt::device m_dev;
   xrt::ip m_kernel;
 
   int m_run_index = 0;
 
   std::shared_ptr<Config> m_cfg;
+
+  std::vector<ProgramBinary> m_binaries;
+
 }; // namespace manticore
 
 } // namespace manticore

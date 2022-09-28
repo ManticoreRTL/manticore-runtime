@@ -18,7 +18,9 @@ int main(int argc, char *argv[]) {
       "xclbin file (required)")(
       "timeout,t", opts::value<uint64_t>()->default_value(0),
       "maximum simulation cycles (0 means no timeout)")(
-      "MANIFEST", opts::value<boost::filesystem::path>()->required());
+      "interval", opts::value<uint64_t>()->default_value(100),
+      "polling interval")("MANIFEST",
+                          opts::value<boost::filesystem::path>()->required());
 
   opts::positional_options_description pd;
   pd.add("MANIFEST", 1);
@@ -50,6 +52,7 @@ int main(int argc, char *argv[]) {
   auto xclbin_path = vm["xclbin"].as<boost::filesystem::path>();
   auto timeout = vm["timeout"].as<uint64_t>();
   auto json_path = vm["MANIFEST"].as<boost::filesystem::path>();
+  auto interval = vm["interval"].as<uint64_t>();
 
   auto checkIsFile = [](const auto &path) {
     if (boost::filesystem::is_regular_file(path) == false) {
@@ -62,7 +65,8 @@ int main(int argc, char *argv[]) {
   checkIsFile(xclbin_path);
   checkIsFile(json_path);
   // create a config by loading the json file
-  auto config = manticore::Config::load(timeout, xclbin_path, json_path);
+  auto config =
+      manticore::Config::load(timeout, interval, xclbin_path, json_path);
 
   // check all the files
 
@@ -75,18 +79,7 @@ int main(int argc, char *argv[]) {
   auto dev = manticore::ManticoreManager(config);
 
   dev.powerOn();
-  // std::cout << cfg->binary_path.size() << std::endl;
-  // if (!cfg->inputsExists()) {
-  //   std::exit(-2);
-  // }
+  dev.initialize();
+  dev.execute();
 
-  // manticore::ManticoreManager dev(cfg);
-
-  // dev.powerOn();
-  // if (cfg->stop_on_entry) {
-  //   cfg->logger->info("Press a key to continue!");
-  //   std::cin.get();
-  // }
-
-  // dev.runAll();
 }

@@ -1,6 +1,15 @@
 #ifndef __LOGGER_H__
 #define __LOGGER_H__
 #include <tinyformat.h>
+
+#define REQUIRE(cond, fmt, args...)                                            \
+  do {                                                                         \
+    if ((cond) == false) {                                                     \
+      fprintf(stderr, "ASSERTION FAILED %s:%d\n" fmt "\n", __FILE__, __LINE__, \
+              ##args);                                                         \
+      exit(EXIT_FAILURE);                                                      \
+    }                                                                          \
+  } while (0);
 namespace manticore {
 class Logger {
 public:
@@ -20,7 +29,17 @@ public:
     do_error(tfm::format(fmt, args...));
   }
 
-  virtual ~Logger() {};
+  virtual ~Logger(){};
+
+  // template <typename... Args>
+  // inline static void require(bool cond, const char *fmt, const Args &...
+  // args) {
+  //   if (!cond) {
+  //     tfm::printfln("Assertion failed! %s: %d:\t%s", __func__, __LINE__,
+  //                   tfm::format(fmt, args...));
+  //     std::exit(EXIT_FAILURE);
+  //   }
+  // }
 
 protected:
 #define ANSI_Red "\033[0;31m"
@@ -57,7 +76,6 @@ protected:
   virtual void do_info(const std::string &msg) const override final;
   void do_msg(const std::string &msg) const;
 };
-
 
 } // namespace manticore
 #endif

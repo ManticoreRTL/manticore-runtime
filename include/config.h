@@ -13,6 +13,7 @@ struct ManticoreException {
   enum class Type { E_FINISH, E_STOP, E_ASSERT, E_FLUSH };
 
   virtual Type type() const = 0;
+  virtual std::string info() const = 0;
   virtual ~ManticoreException() {}
   virtual uint32_t eid() const = 0;
   virtual bool terminating() const = 0;
@@ -23,6 +24,7 @@ public:
   Type type() const override final { return m_type; }
   bool terminating() const override final { return true; }
   uint32_t eid() const override final { return m_id; }
+  std::string info() const override final { return m_info; }
 
 protected:
   TerminatingException(uint32_t id, Type tpe, const std::string &info)
@@ -59,6 +61,7 @@ public:
   const std::vector<std::vector<uint32_t>> &offsets() const {
     return m_offsets;
   }
+  std::string info() const override final { return m_info; }
   std::string consume(const std::vector<std::vector<uint16_t>> &values) const;
 
 private:
@@ -68,22 +71,33 @@ private:
   const std::string m_info;
 };
 struct Config {
+  struct GlobalMemory {
+    const uint64_t base;
+    const uint64_t size;
+    GlobalMemory(uint64_t base, uint64_t size) : base(base), size(size) {}
+  };
 
   std::vector<boost::filesystem::path> init_path;
+
   boost::filesystem::path program_path;
+
   int dimx, dimy;
   std::vector<std::shared_ptr<ManticoreException>> exceptions;
+  std::vector<GlobalMemory> global_memories;
+  uint64_t global_memory_user_base;
 
   boost::filesystem::path xclbin_path;
+
+  uint64_t interval = 100;
   uint64_t timeout;
 
   std::shared_ptr<Logger> logger;
   Config() { logger = std::make_shared<ConsoleLogger>(); }
 
-  static std::shared_ptr<Config> load(uint64_t timeout,
-                     const boost::filesystem::path &xclbin_path,
-                     const boost::filesystem::path &json_path);
-
+  static std::shared_ptr<Config>
+  load(uint64_t timeout, uint64_t interval,
+       const boost::filesystem::path &xclbin_path,
+       const boost::filesystem::path &json_path);
 };
 
 } // namespace manticore

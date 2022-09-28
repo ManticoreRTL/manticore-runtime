@@ -4,7 +4,7 @@
 
 namespace manticore {
 
-std::shared_ptr<Config> Config::load(uint64_t timeout,
+std::shared_ptr<Config> Config::load(uint64_t timeout, uint64_t interval,
                                      const boost::filesystem::path &xclbin_path,
                                      const boost::filesystem::path &json_path) {
   using json = nlohmann::json;
@@ -12,26 +12,34 @@ std::shared_ptr<Config> Config::load(uint64_t timeout,
   auto data = json::parse(fp);
 
   auto config = std::make_shared<manticore::Config>();
+  config->interval = interval;
+  config->timeout = timeout;
   config->xclbin_path = xclbin_path;
-  // config->logger->info("Reading json file");
-  config->dimx = data["grid"]["dimx"];
-  config->dimy = data["grid"]["dimy"];
+
+  config->logger->info("Reading json file");
+  config->dimx = data["dimx"];
+  config->dimy = data["dimy"];
+  config->global_memory_user_base = data["base"].get<uint64_t>();
   config->program_path = data["program"].get<boost::filesystem::path>();
   for (const auto &init : data["initializers"]) {
     config->init_path.push_back(init.get<boost::filesystem::path>());
+  }
+  for (const auto &gmem : data["memories"]) {
+    config->global_memories.push_back(GlobalMemory(
+        gmem["base"].get<uint64_t>(), gmem["size"].get<uint64_t>()));
   }
   for (const auto &excpt : data["exceptions"]) {
 
     const std::string type = excpt["type"];
     if (type == "FINISH") {
       config->exceptions.emplace_back(std::make_shared<FinishException>(
-          excpt["id"].get<uint32_t>(), excpt["info"].get<std::string>()));
+          excpt["eid"].get<uint32_t>(), excpt["info"].get<std::string>()));
     } else if (type == "STOP") {
       config->exceptions.emplace_back(std::make_shared<StopException>(
-          excpt["id"].get<uint32_t>(), excpt["info"].get<std::string>()));
+          excpt["eid"].get<uint32_t>(), excpt["info"].get<std::string>()));
     } else if (type == "ASSERT") {
       config->exceptions.emplace_back(std::make_shared<AssertException>(
-          excpt["id"].get<uint32_t>(), excpt["info"].get<std::string>()));
+          excpt["eid"].get<uint32_t>(), excpt["info"].get<std::string>()));
     } else if (type == "FLUSH") {
 
       std::vector<std::shared_ptr<util::Fmt>> fmt;
@@ -55,7 +63,8 @@ std::shared_ptr<Config> Config::load(uint64_t timeout,
           offsets.push_back(parseOffsets(rec));
         } else if (fmt_type == "dec") {
           fmt.emplace_back(std::make_shared<util::FmtDecLit>(
-              rec["bitwidth"].get<int>(), rec["digits"].get<int>()));
+              rec["bitwidth"].get<int>(), rec["digits"].get<int>(),
+              rec["zeros"].get<bool>()));
           offsets.push_back(parseOffsets(rec));
         } else if (fmt_type == "bin") {
           fmt.emplace_back(
@@ -68,10 +77,9 @@ std::shared_ptr<Config> Config::load(uint64_t timeout,
       }
 
       config->exceptions.emplace_back(std::make_shared<FlushException>(
-          excpt["id"], excpt["info"], fmt, offsets));
+          excpt["eid"], excpt["info"], fmt, offsets));
     }
   }
-
   return config;
 }
 
@@ -79,11 +87,14 @@ std::string FlushException::consume(
     const std::vector<std::vector<uint16_t>> &values) const {
 
   // auto fmt_ix = 0;
-  assert(values.size() == m_fmt.size());
+  REQUIRE(values.size() == m_fmt.size(), "invalid argument! %lu != %lu",
+          values.size(), m_fmt.size());
+
   for (auto fmt_ix = 0; fmt_ix < values.size(); fmt_ix++) {
     switch (m_fmt[fmt_ix]->type()) {
     case util::Fmt::Type::E_STRING:
-      assert(values[fmt_ix].size() == 0);
+      REQUIRE(values[fmt_ix].size() == 0, "invalid argument! %lu != 0",
+              values[fmt_ix].size());
       break;
       // do nothing
     case util::Fmt::Type::E_BIN:
