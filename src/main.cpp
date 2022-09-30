@@ -13,14 +13,13 @@ int main(int argc, char *argv[]) {
 
   opts::options_description opt_desc("Manticore runtime");
 
-  opt_desc.add_options()("help,h", "show the help message and exit")(
-      "xclbin,x", opts::value<boost::filesystem::path>()->required(),
-      "xclbin file (required)")(
-      "timeout,t", opts::value<uint64_t>()->default_value(0),
-      "maximum simulation cycles (0 means no timeout)")(
-      "interval", opts::value<uint64_t>()->default_value(100),
-      "polling interval")("MANIFEST",
-                          opts::value<boost::filesystem::path>()->required());
+  opt_desc.add_options()
+    ("help,h", "show the help message and exit")
+    ("xclbin,x", opts::value<boost::filesystem::path>()->required(), "xclbin file (required)")
+    ("log,l", opts::value<boost::filesystem::path>(), "redirect runtime logs to a file")
+    ("timeout,t", opts::value<uint64_t>()->default_value(0), "maximum simulation cycles (0 means no timeout)")
+    ("interval", opts::value<uint64_t>()->default_value(100), "polling interval")
+    ("MANIFEST",opts::value<boost::filesystem::path>()->required());
 
   opts::positional_options_description pd;
   pd.add("MANIFEST", 1);
@@ -53,7 +52,11 @@ int main(int argc, char *argv[]) {
   auto timeout = vm["timeout"].as<uint64_t>();
   auto json_path = vm["MANIFEST"].as<boost::filesystem::path>();
   auto interval = vm["interval"].as<uint64_t>();
+  std::shared_ptr<manticore::FileLogger> logger;
+  if (vm.count("log")) {
 
+    logger = std::make_shared<manticore::FileLogger>(vm["log"].as<boost::filesystem::path>());
+  }
   auto checkIsFile = [](const auto &path) {
     if (boost::filesystem::is_regular_file(path) == false) {
       std::cerr << "Could not find" << boost::filesystem::canonical(path)
@@ -66,7 +69,7 @@ int main(int argc, char *argv[]) {
   checkIsFile(json_path);
   // create a config by loading the json file
   auto config =
-      manticore::Config::load(timeout, interval, xclbin_path, json_path);
+      manticore::Config::load(timeout, interval, xclbin_path, json_path, logger);
 
   // check all the files
 
@@ -81,5 +84,4 @@ int main(int argc, char *argv[]) {
   dev.powerOn();
   dev.initialize();
   dev.execute();
-
 }

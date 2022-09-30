@@ -92,12 +92,20 @@ struct Config {
   uint64_t timeout;
 
   std::shared_ptr<Logger> logger;
-  Config() { logger = std::make_shared<ConsoleLogger>(); }
+  // Config() { logger = std::make_shared<ConsoleLogger>(); }
+  Config(const std::shared_ptr<FileLogger> &flogger = nullptr) {
+    if (flogger) {
+      logger = flogger;
+    } else {
+      logger = std::make_shared<ConsoleLogger>();
+    }
+  }
 
   static std::shared_ptr<Config>
   load(uint64_t timeout, uint64_t interval,
        const boost::filesystem::path &xclbin_path,
-       const boost::filesystem::path &json_path);
+       const boost::filesystem::path &json_path,
+       const std::shared_ptr<FileLogger> &logger = nullptr);
 };
 
 } // namespace manticore

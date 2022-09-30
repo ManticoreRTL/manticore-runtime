@@ -2,3 +2,5 @@
 .vscode
 .Xil
 build
+test/binaries
+test/hw_emu

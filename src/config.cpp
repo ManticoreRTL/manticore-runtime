@@ -6,12 +6,13 @@ namespace manticore {
 
 std::shared_ptr<Config> Config::load(uint64_t timeout, uint64_t interval,
                                      const boost::filesystem::path &xclbin_path,
-                                     const boost::filesystem::path &json_path) {
+                                     const boost::filesystem::path &json_path,
+                                     const std::shared_ptr<FileLogger>& logger) {
   using json = nlohmann::json;
   auto fp = std::ifstream(json_path.string(), std::ios::in);
   auto data = json::parse(fp);
-
-  auto config = std::make_shared<manticore::Config>();
+  std::cout << "logger " << logger << std::endl;
+  auto config = std::make_shared<manticore::Config>(logger);
   config->interval = interval;
   config->timeout = timeout;
   config->xclbin_path = xclbin_path;

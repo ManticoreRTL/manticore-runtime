@@ -1,7 +1,7 @@
 #ifndef __LOGGER_H__
 #define __LOGGER_H__
+#include <boost/filesystem.hpp>
 #include <tinyformat.h>
-
 #define REQUIRE(cond, fmt, args...)                                            \
   do {                                                                         \
     if ((cond) == false) {                                                     \
@@ -13,8 +13,7 @@
 namespace manticore {
 class Logger {
 public:
-  Logger(const std::string &owner) : m_prefix(owner + std::string(":")){};
-  Logger() : m_prefix(""){};
+  Logger(){};
 
   template <typename... Args>
   void warn(const char *fmt, const Args &... args) const {
@@ -66,7 +65,6 @@ private:
 
 class ConsoleLogger : public Logger {
 public:
-  ConsoleLogger(const std::string &n) : Logger(n) {}
   ConsoleLogger() : Logger() {}
   ~ConsoleLogger() {}
 
@@ -77,5 +75,20 @@ protected:
   void do_msg(const std::string &msg) const;
 };
 
+class FileLogger : public Logger {
+public:
+  FileLogger(const boost::filesystem::path &p, bool auto_flush = true);
+  ~FileLogger();
+
+protected:
+  virtual void do_warn(const std::string &msg) const override final;
+  virtual void do_error(const std::string &msg) const override final;
+  virtual void do_info(const std::string &msg) const override final;
+  void do_msg(const std::string &msg) const;
+
+private:
+  const bool m_auto_flush;
+  mutable boost::filesystem::ofstream m_ofs;
+};
 } // namespace manticore
 #endif

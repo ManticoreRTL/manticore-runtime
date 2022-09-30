@@ -9,12 +9,14 @@ void ManticoreManager::powerOn() {
     unsigned int dev_id = 0;
     m_dev = xrt::device(dev_id);
 
-    m_cfg->logger->info("%s", m_dev.get_info<xrt::info::device::name>());
+    m_cfg->logger->info("device %s", m_dev.get_info<xrt::info::device::name>());
     timedAction("Creating Kernel", [this]() -> void {
       m_cfg->logger->info("Loading %s", m_cfg->xclbin_path.string());
       auto xclbin = m_dev.load_xclbin(m_cfg->xclbin_path.string());
       m_cfg->logger->info("Constructing kernel");
       m_kernel = xrt::ip(m_dev, xclbin, "ManticoreKernel");
+      // m_cfg->logger->info("Allocating buffer");
+      // m_buffer = xrt::bo(m_dev, 1 << 20, 1);
     });
 
   } catch (std::exception &e) {
@@ -68,7 +70,7 @@ void ManticoreManager::initializeMemory() {
     num_words = std::max(gm.base + gm.size, num_words);
   }
 
-  assert(sizeof(uint16_t) == 2);
+  REQUIRE(sizeof(uint16_t) == 2, "something is really wrong!");
 
   // now we can set the base address of each program binary
   for (auto &binary_program : m_binaries) {
@@ -80,44 +82,53 @@ void ManticoreManager::initializeMemory() {
   uint64_t num_bytes = num_words * sizeof(uint16_t);
 
   m_cfg->logger->info(
-      "Allocating buffer %lu bytes for the global memory buffer object",
-      num_bytes);
+      "Allocating %lu bytes for the global memory buffer object", num_bytes);
+
   m_buffer = xrt::bo(m_dev, num_bytes, 1);
+  m_cfg->logger->info("Mapping device buffer to host");
   // zero out the memory
   auto host_buffer = m_buffer.map<char *>();
-  std::fill_n(host_buffer, host_buffer + num_bytes, 0);
+  m_cfg->logger->info("Zeroing out host buffer %p (%lu b)", host_buffer,
+                      m_buffer.size());
+  std::fill(host_buffer, host_buffer + num_bytes, 0);
   // now load all the binaries into the device memory
+
   for (const auto &binary_program : m_binaries) {
     auto offset = binary_program.base * sizeof(uint16_t);
+    m_cfg->logger->info("Writing %s starting at byte offset %lu into memory",
+                        binary_program.path.string(), offset);
     std::copy(binary_program.content.begin(), binary_program.content.end(),
               host_buffer + offset);
   }
 
   m_host_buffer = host_buffer;
   // dma out the content to the device
-  timedAction("Initializing global memory",
+  timedAction("Syncing global memory",
               [&]() -> void { m_buffer.sync(XCL_BO_SYNC_BO_TO_DEVICE); });
 }
 
 void ManticoreManager::initialize() {
 
   // check the device grid size
-  m_cfg->logger->info("Reading device information");
+
   uint32_t dev_info = read<registers::DeviceInfo>();
   uint32_t dimx = (dev_info >> 26) & 63;
   uint32_t dimy = (dev_info >> 20) & 63;
-  if (dimx != m_cfg->dimx || dimy != m_cfg->dimy) {
-    m_cfg->logger->error(
-        "The program is compiled for %dx%d but device is %dx%d", m_cfg->dimx,
-        m_cfg->dimy, dimx, dimy);
-    std::exit(-10);
-  }
+
   // allocate memory and load the programs into it
   initializeMemory();
 
   // set the pointers
   write<registers::Control>(0);
   write<registers::DramBank0Base>(m_buffer.address());
+
+  m_cfg->logger->info("Reading grid information");
+  if (dimx != m_cfg->dimx || dimy != m_cfg->dimy) {
+    m_cfg->logger->error(
+        "The program is compiled for %dx%d but device is %dx%d (0x%08x)",
+        m_cfg->dimx, m_cfg->dimy, dimx, dimy, dev_info);
+    std::exit(EXIT_FAILURE);
+  }
 
   // run all the initialization programs
   m_cfg->logger->info("Running initialization programs");
@@ -129,7 +140,7 @@ void ManticoreManager::initialize() {
 
     if (eid != 0) {
       m_cfg->logger->error("Bad eid %d", eid);
-      std::exit(-10);
+      std::exit(EXIT_FAILURE);
     }
   }
   m_cfg->logger->info("Initialization complete");
