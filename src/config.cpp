@@ -7,17 +7,23 @@ namespace manticore {
 std::shared_ptr<Config> Config::load(uint64_t timeout, uint64_t interval,
                                      const boost::filesystem::path &xclbin_path,
                                      const boost::filesystem::path &json_path,
+                                     const boost::filesystem::path& sim_out_path,
                                      const std::shared_ptr<FileLogger>& logger) {
   using json = nlohmann::json;
+  auto config = std::make_shared<manticore::Config>(logger);
+
+  if (!sim_out_path.empty()) {
+    config->sim_out.open(sim_out_path, std::ios::out);
+  }
+
+
   auto fp = std::ifstream(json_path.string(), std::ios::in);
   auto data = json::parse(fp);
-  std::cout << "logger " << logger << std::endl;
-  auto config = std::make_shared<manticore::Config>(logger);
+
   config->interval = interval;
   config->timeout = timeout;
   config->xclbin_path = xclbin_path;
 
-  config->logger->info("Reading json file");
   config->dimx = data["dimx"];
   config->dimy = data["dimy"];
   config->global_memory_user_base = data["base"].get<uint64_t>();
@@ -29,6 +35,7 @@ std::shared_ptr<Config> Config::load(uint64_t timeout, uint64_t interval,
     config->global_memories.push_back(GlobalMemory(
         gmem["base"].get<uint64_t>(), gmem["size"].get<uint64_t>()));
   }
+  config->logger->info("Handling exceptions");
   for (const auto &excpt : data["exceptions"]) {
 
     const std::string type = excpt["type"];
@@ -42,7 +49,6 @@ std::shared_ptr<Config> Config::load(uint64_t timeout, uint64_t interval,
       config->exceptions.emplace_back(std::make_shared<AssertException>(
           excpt["eid"].get<uint32_t>(), excpt["info"].get<std::string>()));
     } else if (type == "FLUSH") {
-
       std::vector<std::shared_ptr<util::Fmt>> fmt;
       std::vector<std::vector<uint32_t>> offsets;
       auto parseOffsets = [](const json &rec) -> std::vector<uint32_t> {

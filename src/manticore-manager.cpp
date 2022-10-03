@@ -111,10 +111,18 @@ void ManticoreManager::initialize() {
 
   // check the device grid size
 
+
   uint32_t dev_info = read<registers::DeviceInfo>();
   uint32_t dimx = (dev_info >> 26) & 63;
   uint32_t dimy = (dev_info >> 20) & 63;
-
+  m_cfg->logger->info("Reading grid information 0x%032x (dimx %d, dimy %d)", dev_info, dimx, dimy);
+  m_cfg->logger->info("simulation is compiled for dimx %d, dimy %d", m_cfg->dimx, m_cfg->dimy);
+  if (dimx != m_cfg->dimx || dimy != m_cfg->dimy) {
+    m_cfg->logger->error(
+        "The program is compiled for %dx%d but device is %dx%d (0x%08x)",
+        m_cfg->dimx, m_cfg->dimy, dimx, dimy, dev_info);
+    std::exit(EXIT_FAILURE);
+  }
   // allocate memory and load the programs into it
   initializeMemory();
 
@@ -122,13 +130,7 @@ void ManticoreManager::initialize() {
   write<registers::Control>(0);
   write<registers::DramBank0Base>(m_buffer.address());
 
-  m_cfg->logger->info("Reading grid information");
-  if (dimx != m_cfg->dimx || dimy != m_cfg->dimy) {
-    m_cfg->logger->error(
-        "The program is compiled for %dx%d but device is %dx%d (0x%08x)",
-        m_cfg->dimx, m_cfg->dimy, dimx, dimy, dev_info);
-    std::exit(EXIT_FAILURE);
-  }
+
 
   // run all the initialization programs
   m_cfg->logger->info("Running initialization programs");
@@ -234,8 +236,12 @@ void ManticoreManager::handleFlush(
   }
 
   auto message = exception->consume(values);
-
-  std::cout << message << std::endl;
+  if (m_cfg->sim_out.is_open()) {
+    m_cfg->sim_out << message << std::endl;
+    m_cfg->sim_out.flush();
+  } else {
+    std::cout << message << std::endl;
+  }
 
   // exception->offsets
 }

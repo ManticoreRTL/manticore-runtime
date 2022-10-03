@@ -81,6 +81,8 @@ struct Config {
 
   boost::filesystem::path program_path;
 
+  boost::filesystem::ofstream sim_out;
+
   int dimx, dimy;
   std::vector<std::shared_ptr<ManticoreException>> exceptions;
   std::vector<GlobalMemory> global_memories;
@@ -105,6 +107,7 @@ struct Config {
   load(uint64_t timeout, uint64_t interval,
        const boost::filesystem::path &xclbin_path,
        const boost::filesystem::path &json_path,
+       const boost::filesystem::path &p = boost::filesystem::path(),
        const std::shared_ptr<FileLogger> &logger = nullptr);
 };
 
