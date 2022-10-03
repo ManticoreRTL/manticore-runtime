@@ -1,20 +1,41 @@
-add_subdirectory(printing)
+# add_subdirectory(printing)
 
 include(create_test.cmake)
 
-create_test(
-    TEST_NAME even_odd
-    GRID 2x2
-    MANIFEST ${CMAKE_CURRENT_SOURCE_DIR}/binaries/even_odd/manifest.json
-    LOGGER even_odd.log
-    # USE_GUI
-)
 
-create_test(
-    TEST_NAME checksum
-    GRID 2x2
-    MANIFEST ${CMAKE_CURRENT_SOURCE_DIR}/binaries/checksum/manifest.json
-    LOGGER checksum.log
-    OUTPUT checksum_out.txt
-    #  USE_GUI
-)
+file(GLOB VERILOG_UNITS "${CMAKE_CURRENT_SOURCE_DIR}/verilog/*.v")
+
+
+foreach(vfile IN ITEMS ${VERILOG_UNITS})
+    # message ("${vfile}")
+    get_filename_component(target ${vfile} NAME_WE)
+    compile_verilog(
+        TARGET ${target}_compile
+        SOURCES ${vfile}
+        DIMX 2 DIMY 2
+    )
+    if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/references/${target}.txt)
+        create_test(
+            TEST_NAME ${target}
+            GRID 2x2
+            MANIFEST ${target}_compile/manifest.json
+            OUTPUT ${target}_out.txt
+            LOGGER ${target}_runtime.log
+            CHECK_OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/references/${target}.txt
+            DEPENDS ${target_compile}
+        )
+    else()
+        create_test(
+            TEST_NAME ${target}
+            GRID 2x2
+            MANIFEST ${target}_compile/manifest.json
+            OUTPUT ${target}_out.txt
+            LOGGER ${target}_runtime.log
+            DEPENDS ${target}_compile
+        )
+    endif()
+
+endforeach()
+
+
+
