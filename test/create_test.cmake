@@ -1,5 +1,6 @@
 
 
+add_custom_target(prepare_tests)
 function (compile_verilog)
 
 
@@ -49,6 +50,8 @@ function (compile_verilog)
         ${TEST_CONFIGS_TARGET}
         DEPENDS ${TARGET_DIR}/manifest.json
     )
+
+    add_dependencies(prepare_tests ${TEST_CONFIGS_TARGET})
     # set(
     #     ${TEST_CONFIGS_TARGET}_manifest
     #     ${TARGET_DIR}/manifest.json
@@ -65,7 +68,7 @@ function (create_test)
 
     set(HW_EMU_DIR ${CMAKE_CURRENT_SOURCE_DIR}/hw_emu)
 
-    set(options USE_GUI)
+    set(options USE_INI)
     set(singleTokenArgs
         GRID
         MANIFEST
@@ -125,8 +128,8 @@ function (create_test)
 
 
 
-    if(TEST_CONFIGS_USE_GUI)
-        list(APPEND TEST_ENV XRT_INI_PATH=${CMAKE_CURRENT_SOURCE_DIR}/xrt_gui.ini)
+    if(TEST_CONFIGS_USE_INI)
+        list(APPEND TEST_ENV XRT_INI_PATH=${CMAKE_CURRENT_SOURCE_DIR}/xrt.ini)
     endif()
 
 
