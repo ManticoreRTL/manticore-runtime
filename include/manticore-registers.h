@@ -8,15 +8,15 @@ struct Control {
   static constexpr int base = 0;
   static constexpr int width = 32;
 };
-struct VirtualCycleCount {
+struct ExceptionId {
   static constexpr int base = 16;
-  static constexpr int width = 64;
-};
-struct BootloaderCycleCount {
-  static constexpr int base = 28;
   static constexpr int width = 32;
 };
-struct ExceptionId {
+struct TraceDumpHead {
+  static constexpr int base = 24;
+  static constexpr int width = 64;
+};
+struct DeviceInfo {
   static constexpr int base = 36;
   static constexpr int width = 32;
 };
@@ -24,28 +24,44 @@ struct CycleCount {
   static constexpr int base = 44;
   static constexpr int width = 64;
 };
-struct TraceDumpHead {
+struct VirtualCycleCount {
   static constexpr int base = 56;
   static constexpr int width = 64;
 };
-struct DeviceInfo {
+struct BootloaderCycleCount {
   static constexpr int base = 68;
   static constexpr int width = 32;
 };
-struct ScheduleConfig {
+struct ClockStalls {
   static constexpr int base = 76;
   static constexpr int width = 64;
 };
-struct TraceDumpBase {
+struct CacheHits {
   static constexpr int base = 88;
   static constexpr int width = 64;
 };
-struct GlobalMemoryInstructionBase {
+struct CacheMisses {
   static constexpr int base = 100;
   static constexpr int width = 64;
 };
-struct DramBank0Base {
+struct CacheStalls {
   static constexpr int base = 112;
+  static constexpr int width = 64;
+};
+struct ScheduleConfig {
+  static constexpr int base = 124;
+  static constexpr int width = 64;
+};
+struct TraceDumpBase {
+  static constexpr int base = 136;
+  static constexpr int width = 64;
+};
+struct GlobalMemoryInstructionBase {
+  static constexpr int base = 148;
+  static constexpr int width = 64;
+};
+struct DramBank0Base {
+  static constexpr int base = 160;
   static constexpr int width = 64;
 };
 }; // namespace registers

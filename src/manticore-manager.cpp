@@ -163,10 +163,18 @@ uint32_t ManticoreManager::runProgram(const ProgramBinary &program,
     idle = ((state >> 2) & 0x01) == 1;
   } while (!idle);
   uint32_t eid = read<registers::ExceptionId>();
-  m_cfg->logger->info("boot: %d", read<registers::BootloaderCycleCount>());
-  m_cfg->logger->info("cycles: %d", read<registers::CycleCount>());
-  m_cfg->logger->info("vcycles: %d", read<registers::VirtualCycleCount>());
-  m_cfg->logger->info("eid: %d", eid);
+  m_cfg->logger->info("Run finished with eid 0x%8x: boot %lu cycles %lu vcycles %lu clock stall %lu cache miss %lu cache hit %lu cache stall %lu",
+    read<registers::ExceptionId>(),
+    read<registers::BootloaderCycleCount>(),
+    read<registers::CycleCount>(),
+    read<registers::VirtualCycleCount>(),
+    read<registers::ClockStalls>(),
+    read<registers::CacheMisses>(),
+    read<registers::CacheHits>(),
+    read<registers::CacheStalls>()
+  );
+
+  
   return eid;
 }
 
