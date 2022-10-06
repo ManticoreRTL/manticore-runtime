@@ -1,1 +1,1 @@
-Expected        496 and got        496
+Expected        120 and got        120

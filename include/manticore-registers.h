@@ -34,34 +34,34 @@ struct BootloaderCycleCount {
 };
 struct ClockStalls {
   static constexpr int base = 76;
-  static constexpr int width = 64;
+  static constexpr int width = 32;
 };
 struct CacheHits {
-  static constexpr int base = 88;
-  static constexpr int width = 64;
+  static constexpr int base = 84;
+  static constexpr int width = 32;
 };
 struct CacheMisses {
-  static constexpr int base = 100;
-  static constexpr int width = 64;
+  static constexpr int base = 92;
+  static constexpr int width = 32;
 };
 struct CacheStalls {
-  static constexpr int base = 112;
-  static constexpr int width = 64;
+  static constexpr int base = 100;
+  static constexpr int width = 32;
 };
 struct ScheduleConfig {
-  static constexpr int base = 124;
+  static constexpr int base = 108;
   static constexpr int width = 64;
 };
 struct TraceDumpBase {
-  static constexpr int base = 136;
+  static constexpr int base = 120;
   static constexpr int width = 64;
 };
 struct GlobalMemoryInstructionBase {
-  static constexpr int base = 148;
+  static constexpr int base = 132;
   static constexpr int width = 64;
 };
 struct DramBank0Base {
-  static constexpr int base = 160;
+  static constexpr int base = 144;
   static constexpr int width = 64;
 };
 }; // namespace registers
