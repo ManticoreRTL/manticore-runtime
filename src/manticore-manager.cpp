@@ -183,44 +183,46 @@ void ManticoreManager::execute() {
   const auto &program = m_binaries.back();
   bool failed = false;
   bool resume = false;
-  while (true) {
-    auto cmd = (resume ? Command::resume(m_cfg->timeout)
-                       : Command::start(m_cfg->timeout));
-    auto eid = runProgram(program, cmd);
+  timedAction("simulation run", [&]() {
+	  while (true) {
+	    auto cmd = (resume ? Command::resume(m_cfg->timeout)
+			       : Command::start(m_cfg->timeout));
+	    auto eid = runProgram(program, cmd);
 
-    if (eid > 0xffff) {
-      m_cfg->logger->error("Timed out");
-      break;
-    }
-    auto prescription =
-        std::find_if(m_cfg->exceptions.begin(), m_cfg->exceptions.end(),
-                     [eid](const auto &error) { return error->eid() == eid; });
-    if (prescription == m_cfg->exceptions.end()) {
-      m_cfg->logger->error("Unknown eid %d!", eid);
-      break;
-    }
+	    if (eid > 0xffff) {
+	      m_cfg->logger->error("Timed out");
+	      break;
+	    }
+	    auto prescription =
+		std::find_if(m_cfg->exceptions.begin(), m_cfg->exceptions.end(),
+			     [eid](const auto &error) { return error->eid() == eid; });
+	    if (prescription == m_cfg->exceptions.end()) {
+	      m_cfg->logger->error("Unknown eid %d!", eid);
+	      break;
+	    }
 
-    auto exception = *prescription;
-    auto tpe = exception->type();
+	    auto exception = *prescription;
+	    auto tpe = exception->type();
 
-    if (tpe == ManticoreException::Type::E_FINISH) {
-      std::cout << "Got $finish!" << std::endl
-                << exception->info() << std::endl;
-      break;
-    } else if (tpe == ManticoreException::Type::E_ASSERT) {
-      std::cerr << "Assertion failed!" << std::endl
-                << exception->info() << std::endl;
-      failed = true;
-      break;
-    } else if (tpe == ManticoreException::Type::E_STOP) {
-      std::cerr << "Got $stop!" << std::endl << exception->info() << std::endl;
-      failed = true;
-      break;
-    } else if (tpe == ManticoreException::Type::E_FLUSH) {
-      resume = true;
-      handleFlush(std::dynamic_pointer_cast<FlushException>(exception));
-    }
-  }
+	    if (tpe == ManticoreException::Type::E_FINISH) {
+	      std::cout << "Got $finish!" << std::endl
+			<< exception->info() << std::endl;
+	      break;
+	    } else if (tpe == ManticoreException::Type::E_ASSERT) {
+	      std::cerr << "Assertion failed!" << std::endl
+			<< exception->info() << std::endl;
+	      failed = true;
+	      break;
+	    } else if (tpe == ManticoreException::Type::E_STOP) {
+	      std::cerr << "Got $stop!" << std::endl << exception->info() << std::endl;
+	      failed = true;
+	      break;
+	    } else if (tpe == ManticoreException::Type::E_FLUSH) {
+	      resume = true;
+	      handleFlush(std::dynamic_pointer_cast<FlushException>(exception));
+	    }
+	  }
+  });
 }
 
 void ManticoreManager::handleFlush(
